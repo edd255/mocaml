@@ -19,19 +19,19 @@ open Environment
 open Evaluator
 open Lexer
 open Parser
-open TypeChecker
-open Util
+open Types
 
 (* checkStr: string -> type *)
 module Main = struct
-  let checkStr (s : string) =
-    let exps = fst (exp (Lexer.lex s)) in
-    check empty exps
+  let parse (s: string) = 
+    let (e, l) = Parser.exp (Lexer.lex s) in
+    if l = [] then e else failwith "parsing failed"
 
-  let evalStr (s : string) =
-    let exps = fst (Evaluator.exp (Lexer.lex s)) in
-    eval empty exps
+  let check (s : string) =
+    let exps = parse s in
+    TypeChecker.check empty exps
 
-  let evalStrChecked (s : string) =
-    match checkStr s with ty -> evalStr s | _ -> failwith "Type Error. Abort"
+  let eval (s : string) =
+    match check s with
+      | _ -> Evaluator.eval [] (parse s)
 end

@@ -1,58 +1,7 @@
+open Tokens
+
 (* Constructor types, see section 7.1 *)
 module Lexer = struct
-  type ty = Bool | Int | Arrow of ty * ty
-  type con = Bcon of bool | Icon of int
-  type op = Add | Sub | Mul | Div | Leq | Eq
-  type var = string
-
-  type exp =
-    | Var of var
-    | Con of con
-    | Oapp of op * exp * exp
-    | Fapp of exp * exp
-    | If of exp * exp * exp
-    | Lam of var * exp
-    | Lamty of var * ty * exp
-    | Let of var * exp * exp
-    | Letrec of var * var * exp * exp
-    | Letrecty of var * var * ty * ty * exp * exp
-
-  type value =
-    | Bval of bool
-    | Ival of int
-    | Closure of var * exp * (var, value) env
-    | Rclosure of var * var * exp * (var, value) env
-    | Letrecty of var * var * ty * ty * exp * exp
-
-  type const = BCON of bool | ICON of int
-
-  type token =
-    | LP
-    | RP
-    | EQ
-    | COL
-    | ARR
-    | ADD
-    | SUB
-    | MUL
-    | DIV
-    | LEQ
-    | IF
-    | THEN
-    | ELSE
-    | LAM
-    | LET
-    | IN
-    | REC
-    | CON of const
-    | VAR of string
-    | BOOL
-    | INT
-    | US
-    | QUOTE
-    | DBQUOTE
-    | TY of ty
-
   (* The basic design of the lexer (see section 6.6)
    *     1. Finish if the string exhausted.
    *     2. If first character is
@@ -75,6 +24,28 @@ module Lexer = struct
    *                corresponding constant token.
    *           iii. Otherwise add variable token. *)
 
+  let whitespace (c : char) =
+    match c with ' ' | '\n' | '\t' -> true | _ -> false
+
+  let num (c : char) =
+    match c with
+    | '0' -> 0
+    | '1' -> 1
+    | '2' -> 2
+    | '3' -> 3
+    | '4' -> 4
+    | '5' -> 5
+    | '6' -> 6
+    | '7' -> 7
+    | '8' -> 8
+    | '9' -> 9
+    | _ -> failwith "num: no number"
+
+  let digit (c : char) = 48 <= Char.code c && Char.code c <= 57
+  let lowercase (c : char) = 97 <= Char.code c && Char.code c <= 122
+  let underscore (c : char) = Char.code c = 95
+  let prime (c : char) = Char.code c = 39
+  
   (* lexer, see section 7.4 *)
   let lex (s : string) : token list =
     let get i = String.get s i in
@@ -103,16 +74,16 @@ module Lexer = struct
         | '_' -> lex (i + 1) (US :: l)
         | '\'' -> lex (i + 1) (QUOTE :: l)
         | '\"' -> lex (i + 1) (DBQUOTE :: l)
-        | c when Util.whitespace c -> lex (i + 1) l
-        | c when Util.digit c -> lex_num (i + 1) (num c) l
-        | c when Util.lowercase c -> lex_id (i + 1) 1 l
-        | c -> failwith "lex: illegal character"
+        | c when whitespace c -> lex (i + 1) l
+        | c when digit c -> lex_num (i + 1) (num c) l
+        | c when lowercase c -> lex_id (i + 1) 1 l
+        | _ -> failwith "lex: illegal character"
     and lex_num i n l =
       if exhausted i then lex_num' i n l
       else
         let c = get i in
-        if Util.digit c then lex_num (i + 1) ((10 * n) + num c) l
-        else if Util.lowercase c then failwith "lex_num: expression not allowed"
+        if digit c then lex_num (i + 1) ((10 * n) + num c) l
+        else if lowercase c then failwith "lex_num: expression not allowed"
         else lex_num' i n l
     and lex_num' i n l = lex i (CON (ICON n) :: l)
     and lex_id i n l =
@@ -120,8 +91,8 @@ module Lexer = struct
       else
         let c = get i in
         match c with
-        | c' when Util.underscore c -> lex_id (i + 1) (n + 1) l
-        | c' when Util.lowercase c || Util.digit c || Util.prime c -> lex_id (i + 1) (n + 1) l
+        | _ when underscore c -> lex_id (i + 1) (n + 1) l
+        | _ when lowercase c || digit c || prime c -> lex_id (i + 1) (n + 1) l
         | _ -> lex_id' i n l
     and lex_id' i n l =
       match getstr i n with

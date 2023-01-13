@@ -1,4 +1,4 @@
-open Util
+open Tokens
 
 module Parser = struct
   (* the grammar for types, see section 7.5
@@ -6,15 +6,20 @@ module Parser = struct
    * ty' ::= "->" ty | []
    * pty ::= "bool" | "int" | "(" ty ")" *)
 
+  let verify c l =
+    match l with
+    | [] -> failwith "verify: no token"
+    | c' :: l -> if c' = c then l else failwith "verify: wrong token"
+
   let rec tygr l =
     let t, l = ptygr l in
     tygr' t l
 
   and tygr' t l =
     match l with
-    | ARR :: l ->
+    | Tokens.ARR :: l ->
         let t', l = tygr l in
-        (Arrow (t, t'), l)
+        (Tokens.Arrow (t, t'), l)
     | _ -> (t, l)
 
   and ptygr l =
@@ -23,7 +28,7 @@ module Parser = struct
     | INT :: l -> (Int, l)
     | LP :: l ->
         let t, l = tygr l in
-        (t, Util.verify RP l)
+        (t, verify RP l)
     | _ -> failwith "ptygr"
 
   (* I can't explain why, but the parentheses in the third line are needed. *)
@@ -53,8 +58,8 @@ module Parser = struct
     match l with
     | IF :: l ->
         let e1, l = exp l in
-        let e2, l = exp (Util.verify THEN l) in
-        let e3, l = exp (Util.verify ELSE l) in
+        let e2, l = exp (verify THEN l) in
+        let e3, l = exp (verify ELSE l) in
         (If (e1, e2, e3), l)
     | LAM :: VAR x :: ARR :: l ->
         let e1, l = exp l in
@@ -62,22 +67,22 @@ module Parser = struct
     | LAM :: LP :: VAR x :: COL :: l ->
         (* this caused a major pain... *)
         let ty1, l = tygr l in
-        let e1, l = exp (Util.verify ARR (Util.verify RP l)) in
+        let e1, l = exp (verify ARR (verify RP l)) in
         (Lamty (x, ty1, e1), l)
     | LET :: VAR x :: EQ :: l ->
         let e1, l = exp l in
-        let e2, l = exp (Util.verify IN l) in
+        let e2, l = exp (verify IN l) in
         (Let (x, e1, e2), l)
     | LET :: REC :: VAR f :: VAR x :: EQ :: l ->
         let e1, l = exp l in
-        let e2, l = exp (Util.verify IN l) in
+        let e2, l = exp (verify IN l) in
         (Letrec (f, x, e1, e2), l)
     | LET :: REC :: VAR f :: LP :: VAR x :: COL :: l ->
         (* this caused a major pain... *)
         let ty1, l = tygr l in
-        let ty2, l = tygr (Util.verify COL (Util.verify RP l)) in
-        let e1, l = exp (Util.verify EQ l) in
-        let e2, l = exp (Util.verify IN l) in
+        let ty2, l = tygr (verify COL (verify RP l)) in
+        let e1, l = exp (verify EQ l) in
+        let e2, l = exp (verify IN l) in
         (Letrecty (f, x, ty1, ty2, e1, e2), l)
     | l -> cexp l
 
@@ -130,10 +135,10 @@ module Parser = struct
 
   and aexp' e l =
     match l with
-    | VAR x :: _ ->
+    | VAR _ :: _ ->
         let e', l = pexp l in
         aexp' (Fapp (e, e')) l
-    | CON c :: _ ->
+    | CON _ :: _ ->
         let e', l = pexp l in
         aexp' (Fapp (e, e')) l
     | LP :: _ ->
@@ -148,6 +153,6 @@ module Parser = struct
     | VAR x :: l -> (Var x, l)
     | LP :: l ->
         let e, l = exp l in
-        (e, Util.verify RP l)
+        (e, verify RP l)
     | _ -> failwith "pexp"
 end
