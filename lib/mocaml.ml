@@ -22,7 +22,7 @@ open Parser
 open Types
 
 (* checkStr: string -> type *)
-module Main = struct
+module Mocaml = struct
   let parse (s: string) = 
     let (e, l) = Parser.exp (Lexer.lex s) in
     if l = [] then e else failwith "parsing failed"
