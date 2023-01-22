@@ -10,4 +10,4 @@ Run `./main` after building the project. Type in expressions like, for example,
 `let x = 5 * 5 in x * x`.
 
 ## To-Do
-- [] Lexing function types as input, comments
+- [ ] Lexing function types as input, comments
